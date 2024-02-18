@@ -1,3 +1,5 @@
+import { load } from "https://deno.land/std@0.216.0/dotenv/mod.ts";
+
 import {
     MongoClient,
 } from "https://deno.land/x/atlas_sdk@v1.1.2/mod.ts";
@@ -16,10 +18,12 @@ interface AccData {
     accData: number;
 }
 
-const json = await Deno.readTextFile("./src/auth.txt");
-const config = JSON.parse(json);
-const url = config.url;
-const api = config.apiKey;
+const env = await load();
+const api = env["apiKey"];
+const url = env["url"];
+
+console.log(url);
+console.log(api);
 
 const client = new MongoClient({
     endpoint: url,
