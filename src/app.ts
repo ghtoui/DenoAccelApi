@@ -18,6 +18,7 @@ interface AccData {
     accData: number;
 }
 
+await load({export: true})
 const api = Deno.env.get("MONGO_APIKEY");
 const url = Deno.env.get("MONGO_ENDPOINT");
 
