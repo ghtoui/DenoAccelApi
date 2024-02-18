@@ -18,9 +18,8 @@ interface AccData {
     accData: number;
 }
 
-const env = await load();
-const api = env["apiKey"];
-const url = env["url"];
+const api = Deno.env.get("MONGO_APIKEY");
+const url = Deno.env.get("MONGO_ENDPOINT");
 
 const client = new MongoClient({
     endpoint: url,
