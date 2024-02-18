@@ -1,4 +1,4 @@
-name: Deploy
+name: DenoDeploy
 on:
   push:
     branches: main
@@ -28,12 +28,9 @@ jobs:
         with:
           node-version: lts/*
 
-      - name: Build step
-        run: "npm install && npm run build" # 📝 Update the build command(s) if necessary
-
       - name: Upload to Deno Deploy
         uses: denoland/deployctl@v1
         with:
           project: "recordaccel"
-          entrypoint: "index.js" # 📝 Update the entrypoint if necessary
+          entrypoint: "src/app.ts" # 📝 Update the entrypoint if necessary
           root: "." # 📝 Update the root if necessary
