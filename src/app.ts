@@ -1,3 +1,5 @@
+import { parse } from "https://deno.land/std@0.160.0/datetime/mod.ts";
+
 import { load } from "https://deno.land/std@0.216.0/dotenv/mod.ts";
 
 import {
@@ -14,16 +16,13 @@ import {
 
 interface AccData {
     userId: string;
-    date: string;
+    date: Date;
     accData: number;
 }
 
 const env = await load();
 const api = env["apiKey"];
 const url = env["url"];
-
-console.log(url);
-console.log(api);
 
 const client = new MongoClient({
     endpoint: url,
@@ -60,7 +59,7 @@ function convertAccData(arg: any): AccData | null {
        }
        return {
            userId: arg.userId,
-           date: arg.date,
+           date: new Date(arg.date),
            accData: arg.accData
        }
 }
