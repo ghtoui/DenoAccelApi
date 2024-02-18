@@ -1,5 +1,3 @@
-import { parse } from "https://deno.land/std@0.160.0/datetime/mod.ts";
-
 import { load } from "https://deno.land/std@0.216.0/dotenv/mod.ts";
 
 import {
@@ -35,7 +33,39 @@ const DB = client.database("recordAccelDB");
 const ACCDATACOL = DB.collection<AccData>("recordAccelCol");
 const KV = await Deno.openKv();
 
-async function loadAccData(userId: string): Promise<AccData[]> {
+async function loadAccData(userId: string, date: string): Promise<AccData[]> {
+    // その日の0 ~ 24時までを集計する
+    const dayStart = new Date(date);
+    dayStart.setUTCHours(0, 0, 0, 0);
+    const dayEnd = new Date(date);
+    dayEnd.setUTCHours(23, 59, 59, 0)
+    const data = await ACCDATACOL.aggregate([
+        { $match: {
+            "userId": userId,
+            "date": {
+                $gte: dayStart,
+                $lt: dayEnd
+            }
+        } },
+        { $group: {_id: "$userId", dates: {$push: {date: "$date"}}}},
+    ]);
+    return data
+}
+
+async function loadDateList(userId: string, pageNumber: number): Promise<string[]> {
+    // 一度に取れる量を制限する
+    const pageSize = 7;
+    const dateDatas = await ACCDATACOL.aggregate([
+        { $match: {"userId": userId} },
+        { $group: {_id: "$userId", dates: {$addToSet: {
+            $dateToString: {format: "%Y-%m-%d", date: "$date"}
+        }}}},
+    ]).catch(err => {
+        console.log(err);
+    });
+    let sendData = dateDatas[0]["dates"].sort()
+
+    return sendData.slice(pageSize * pageNumber, pageSize * pageNumber + pageSize)
 }
 
 async function insertAccData(accData: AccData[]) {
@@ -43,6 +73,11 @@ async function insertAccData(accData: AccData[]) {
     // userIDをdenoのKVデータベースに記録する
     await KV.set(["users", userId], userId);
     await ACCDATACOL.insertMany(accData);
+}
+
+async function isRegisterUser(userId: string): Promise<boolean> {
+    const user = await KV.get(["users", userId]);
+    return user.value == userId
 }
 
 // 入力の型チェック
@@ -66,18 +101,49 @@ function convertAccData(arg: any): AccData | null {
 
 const app = new WebApp();
 const router = new Router();
-const USER_ROOT = new URLPattern({ pathname: "/userId/:id" });
 
-router.get("/userId/:id", async (req: Req, res: Res) => {
-    const match = USER_ROOT.exec(req.url);
-    if (!match) {
+router.get("/", async (req: Req, res: Res) => {
+    const params = req.url?.searchParams;
+    if (!params) {
         res.reply = {status: 400, message: "don't match url pattern"}
         return
     }
-    const userId = match.pathname.groups.id;
-    if (userId) {
-        const userAccData = await loadAccData(userId);
+    const userId = params.get("userId");
+    const date = params.get("date");
+    if (userId && date) {
+        const userAccData = await loadAccData(userId, date);
         res.reply = userAccData;
+    } else {
+        res.reply = {status: 400, message: `userId or date not found`}
+    }
+});
+
+router.get("/date", async (req: Req, res: Res) => {
+    const params = req.url?.searchParams;
+    if (!params) {
+        res.reply = {status: 400, message: "don't match url pattern"}
+        return
+    }
+    const userId = params.get("userId");
+    const pageNumber = Number(params.get("pageNumber"));
+    if (userId && !Number.isNaN(pageNumber)) {
+        const dates = await loadDateList(userId, pageNumber);
+        res.reply = dates;
+    } else {
+        res.reply = {status: 400, message: `userId or pageNumber not found`}
+    }
+});
+
+// 含まれていたら、追加する
+router.get("/checkUser", async (req: Req, res: Res) => {
+    const params = req.url?.searchParams;
+    if (!params) {
+        res.reply = {status: 400, message: "don't match url pattern"}
+        return
+    }
+    const userId = params.get("userId");
+    if (userId) {
+        res.reply = await isRegisterUser(userId);
     } else {
         res.reply = {status: 400, message: `userId: ${userId} not found`}
     }
