@@ -47,7 +47,7 @@ async function loadAccData(userId: string, date: string): Promise<AccData[]> {
                 $lt: dayEnd
             }
         } },
-        { $group: {_id: "$userId", dates: {$push: {date: "$date", accData: "$accData"}}}},
+        { $group: {_id: "$userId", accDatas: {$push: {date: "$date", accData: "$accData"}}}},
     ]);
     return data
 }
