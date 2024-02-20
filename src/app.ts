@@ -18,9 +18,9 @@ interface AccData {
     accData: number;
 }
 
-const env = await load();
-const api = env["apiKey"];
-const url = env["url"];
+await load({export: true})
+const api = Deno.env.get("MONGO_APIKEY");
+const url = Deno.env.get("MONGO_ENDPOINT");
 
 const client = new MongoClient({
     endpoint: url,
@@ -47,7 +47,7 @@ async function loadAccData(userId: string, date: string): Promise<AccData[]> {
                 $lt: dayEnd
             }
         } },
-        { $group: {_id: "$userId", dates: {$push: {date: "$date"}}}},
+        { $group: {_id: "$userId", dates: {$push: {date: "$date", accData: "$accData"}}}},
     ]);
     return data
 }
