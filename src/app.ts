@@ -55,17 +55,22 @@ async function loadAccData(userId: string, date: string): Promise<AccData[]> {
 async function loadDateList(userId: string, pageNumber: number): Promise<string[]> {
     // 一度に取れる量を制限する
     const pageSize = 7;
-    const dateDatas = await ACCDATACOL.aggregate([
-        { $match: {"userId": userId} },
-        { $group: {_id: "$userId", dates: {$addToSet: {
-            $dateToString: {format: "%Y-%m-%d", date: "$date"}
-        }}}},
-    ]).catch(err => {
+    let sendData: string[]
+    try {
+        const dateDatas = await ACCDATACOL.aggregate([
+            { $match: {"userId": userId} },
+            { $group: {_id: "$userId", dates: {$addToSet: {
+                $dateToString: {format: "%Y-%m-%d", date: "$date"}
+            }}}},
+        ])
+        sendData = dateDatas[0]["dates"].sort()
+        sendData.slice(pageSize * pageNumber, pageSize * pageNumber + pageSize)
+    } catch(err) {
         console.log(err);
-    });
-    let sendData = dateDatas[0]["dates"].sort()
+        sendData = []
+    }
 
-    return sendData.slice(pageSize * pageNumber, pageSize * pageNumber + pageSize)
+    return sendData
 }
 
 async function insertAccData(accData: AccData[]) {
